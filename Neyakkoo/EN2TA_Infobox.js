@@ -1,36 +1,37 @@
 /**
- * ஆங்கில விக்கியில் இருந்து தகவற்பெட்டியை எடுத்து தமிழ் விக்கிக்கு மாற்றும் கருவி
+ * EN2TA Infobox Importer (Vector 2022 Optimized)
  */
 (function () {
-    function initEN2TA() {
-        // கருவிப்பட்டியில் (Tools menu) பொத்தானைச் சேர்த்தல்
-        var link = mw.util.addPortletLink(
-            'p-tb', 
-            '#', 
-            'EN2TA Infobox', 
-            't-en2ta-infobox', 
-            'ஆங்கில விக்கியில் இருந்து தகவற்பெட்டியைப் பிரதி எடு'
-        );
+    'use strict';
 
-        if (link) {
-            $(link).click(function (e) {
-                e.preventDefault();
-                runTool();
-            });
+    function initEN2TA() {
+        var action = mw.config.get('wgAction');
+        if (action === 'edit' || action === 'submit') {
+            
+            // Vector 2022-இல் 'p-cactions' மெனுவிற்கு பதிலாக நேரடியாகத் தெரிய 'p-views' பயன்படுத்துகிறோம்
+            var link = mw.util.addPortletLink(
+                'p-views', 
+                '#',
+                '🚀 EN2TA',
+                'ca-en2ta-infobox',
+                'ஆங்கில விக்கியில் இருந்து தகவற்பெட்டியைப் பெறு'
+            );
+
+            if (link) {
+                $(link).click(function (e) {
+                    e.preventDefault();
+                    runTool();
+                });
+            }
         }
     }
 
     function runTool() {
-        var enTitle = prompt("ஆங்கிலக் கட்டுரையின் தலைப்பு:", "");
+        var enTitle = prompt("📦 ஆங்கிலக் கட்டுரையின் தலைப்பு (English Article Title):", "");
         if (!enTitle) return;
 
-        var taTitle = prompt("தமிழ் கட்டுரையின் தலைப்பு:", enTitle);
-        if (!taTitle) return;
-
-        var categoryName = prompt("பகுப்பின் பெயர்:", "ஆங்கிலத் திரைப்படங்கள்");
-        var talkTemplate = "{{100விக்கிநாட்கள்2026}}";
-
         var enApi = new mw.ForeignApi('https://en.wikipedia.org/w/api.php');
+        mw.notify('ஆங்கிலத் தரவுகள் பெறப்படுகின்றன...', { type: 'info' });
 
         enApi.get({
             action: 'query',
@@ -42,7 +43,7 @@
         }).done(function (data) {
             var page = data.query.pages[0];
             if (page.missing) {
-                alert("ஆங்கிலத்தில் இப்படி ஒரு கட்டுரை இல்லை!");
+                alert("❌ பிழை: ஆங்கிலத்தில் இப்படி ஒரு கட்டுரை இல்லை!");
                 return;
             }
 
@@ -50,33 +51,14 @@
             var infoboxMatch = fullText.match(/\{\{Infobox[\s\S]*?\n\}\}/i);
 
             if (infoboxMatch) {
-                saveToTamilWiki(taTitle, enTitle, infoboxMatch[0], categoryName, talkTemplate);
+                var $textBox = $('#wpTextbox1');
+                $textBox.val(infoboxMatch[0] + "\n\n" + $textBox.val());
+                mw.notify('✅ தகவற்பெட்டி இணைக்கப்பட்டது!', { type: 'success' });
             } else {
-                alert("தகவற்பெட்டி ஆங்கிலக் கட்டுரையில் கண்டறியப்படவில்லை.");
+                alert("⚠️ தகவல்: இந்தக் கட்டுரையில் 'Infobox' கண்டறியப்படவில்லை.");
             }
         });
     }
 
-    function saveToTamilWiki(taTitle, enTitle, infobox, category, talkTemplate) {
-        var taApi = new mw.Api();
-        var articleText = "{{தொகுக்கப்படுகிறது}}\n" + infobox + "\n\n" + 
-                          "== மேற்கோள்கள் ==\n{{Reflist}}\n\n" + 
-                          "[[பகுப்பு:" + category + "]]";
-
-        taApi.postWithEditToken({
-            action: 'edit',
-            title: taTitle,
-            text: articleText,
-            summary: "[[:en:" + enTitle + "]] தகவற்பெட்டி நகலெடுக்கப்பட்டது",
-            format: 'json'
-        }).done(function () {
-            mw.notify('கட்டுரை உருவாக்கப்பட்டது.');
-            window.location.href = mw.util.getUrl(taTitle);
-        });
-    }
-
-    // மீடியாவிக்கி தொகுதிகள் தயாரானதும் இயக்கவும்
-    $(document).ready(function() {
-        mw.loader.using(['mediawiki.util', 'mediawiki.ForeignApi', 'mediawiki.api']).done(initEN2TA);
-    });
+    mw.loader.using(['mediawiki.util', 'mediawiki.ForeignApi', 'mediawiki.api', 'mediawiki.notification']).done(initEN2TA);
 })();
