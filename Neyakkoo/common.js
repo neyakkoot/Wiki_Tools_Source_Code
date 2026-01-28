@@ -7,4 +7,10 @@
  * உருவாக்குபவர்: பயனர்:Neyakkoo
  */
 /**Tool 3_EN2TA_Infobox*/
-mw.loader.load('//ta.wikipedia.org/w/index.php?title=User:Neyakkoo/EN2TA_Infobox.js&action=raw&ctype=text/javascript');
+/** EN → TA Infobox tool loader **/
+// தொகுக்கும் பக்கத்தில் மட்டும் இந்த கருவி இயங்கும்
+if (mw.config.get('wgAction') === 'edit' || mw.config.get('wgAction') === 'submit') {
+    mw.loader.using(['mediawiki.util']).done(function () {
+        mw.loader.load('https://ta.wikipedia.org/w/index.php?title=User:Neyakkoo/EN2TA_Infobox.js&action=raw&ctype=text/javascript');
+    });
+}
