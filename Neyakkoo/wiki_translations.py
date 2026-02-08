@@ -3,7 +3,12 @@ import csv
 
 def get_wikidata_translations(word_en):
     url = "https://www.wikidata.org/w/api.php"
-    
+
+    # Define a User-Agent header
+    headers = {
+        'User-Agent': 'ColabWikidataBot/1.0 (your_email@example.com)' # Replace with your actual email or identifier
+    }
+
     # 1. ஆங்கிலச் சொல்லிற்கான Wikidata ID-யைத் தேடுதல்
     search_params = {
         "action": "wbsearchentities",
@@ -11,14 +16,17 @@ def get_wikidata_translations(word_en):
         "format": "json",
         "search": word_en
     }
-    
+
     try:
-        response = requests.get(url, params=search_params).json()
-        if not response.get('search'):
+        response = requests.get(url, params=search_params, headers=headers)
+        response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+        response_json = response.json() # Attempt to parse JSON
+
+        if not response_json.get('search'):
             return None
-        
-        entity_id = response['search'][0]['id']
-        
+
+        entity_id = response_json['search'][0]['id']
+
         # 2. குறிப்பிட்ட மொழிகளின் லேபிள்கள் மற்றும் படத்தைப் பெறுதல்
         data_params = {
             "action": "wbgetentities",
@@ -26,12 +34,15 @@ def get_wikidata_translations(word_en):
             "format": "json",
             "props": "labels|claims"
         }
-        
-        data = requests.get(url, params=data_params).json()
+
+        data_response = requests.get(url, params=data_params, headers=headers)
+        data_response.raise_for_status()
+        data = data_response.json()
+
         entity = data['entities'][entity_id]
         labels = entity.get('labels', {})
         claims = entity.get('claims', {})
-        
+
         # படத்தைப் பெறுதல் (P18)
         image_name = "No Image Found"
         if 'P18' in claims:
@@ -49,8 +60,27 @@ def get_wikidata_translations(word_en):
             "Hindi": labels.get('hi', {}).get('value', 'N/A'),
             "Malay": labels.get('ms', {}).get('value', 'N/A')
         }
+    except requests.exceptions.HTTPError as errh:
+        print(f"HTTP Error for {word_en}: {errh}")
+        print(f"Response status code: {response.status_code}")
+        print(f"Response content: {response.text}")
+        return None
+    except requests.exceptions.ConnectionError as errc:
+        print(f"Error Connecting for {word_en}: {errc}")
+        return None
+    except requests.exceptions.Timeout as errt:
+        print(f"Timeout Error for {word_en}: {errt}")
+        return None
+    except requests.exceptions.RequestException as err:
+        print(f"Something went wrong with the request for {word_en}: {err}")
+        return None
+    except ValueError as json_err: # Catches json.JSONDecodeError
+        print(f"JSON Decode Error for {word_en}: {json_err}")
+        print(f"Problematic response status code: {response.status_code}")
+        print(f"Problematic response text: {response.text}")
+        return None
     except Exception as e:
-        print(f"Error fetching data for {word_en}: {e}")
+        print(f"An unexpected error occurred for {word_en}: {e}")
         return None
 
 # தேட வேண்டிய சொற்களின் பட்டியல்
