@@ -1,0 +1,80 @@
+import requests
+import csv
+
+def get_wikidata_translations(word_en):
+    url = "https://www.wikidata.org/w/api.php"
+    
+    # 1. ஆங்கிலச் சொல்லிற்கான Wikidata ID-யைத் தேடுதல்
+    search_params = {
+        "action": "wbsearchentities",
+        "language": "en",
+        "format": "json",
+        "search": word_en
+    }
+    
+    try:
+        response = requests.get(url, params=search_params).json()
+        if not response.get('search'):
+            return None
+        
+        entity_id = response['search'][0]['id']
+        
+        # 2. குறிப்பிட்ட மொழிகளின் லேபிள்கள் மற்றும் படத்தைப் பெறுதல்
+        data_params = {
+            "action": "wbgetentities",
+            "ids": entity_id,
+            "format": "json",
+            "props": "labels|claims"
+        }
+        
+        data = requests.get(url, params=data_params).json()
+        entity = data['entities'][entity_id]
+        labels = entity.get('labels', {})
+        claims = entity.get('claims', {})
+        
+        # படத்தைப் பெறுதல் (P18)
+        image_name = "No Image Found"
+        if 'P18' in claims:
+            image_name = claims['P18'][0]['mainsnak']['datavalue']['value']
+            image_name = f"File:{image_name}"
+
+        # தரவுகளைத் தொகுத்தல்
+        return {
+            "English": word_en,
+            "Image": image_name,
+            "Tamil": labels.get('ta', {}).get('value', 'N/A'),
+            "Telugu": labels.get('te', {}).get('value', 'N/A'),
+            "Kannada": labels.get('kn', {}).get('value', 'N/A'),
+            "Malayalam": labels.get('ml', {}).get('value', 'N/A'),
+            "Hindi": labels.get('hi', {}).get('value', 'N/A'),
+            "Malay": labels.get('ms', {}).get('value', 'N/A')
+        }
+    except Exception as e:
+        print(f"Error fetching data for {word_en}: {e}")
+        return None
+
+# தேட வேண்டிய சொற்களின் பட்டியல்
+search_words = ["mother", "father", "brother", "sister", "friend", "boy", "girl", "man", "woman", "child", "house"]
+
+results = []
+print("தரவுகள் சேகரிக்கப்படுகின்றன...")
+
+for word in search_words:
+    data = get_wikidata_translations(word)
+    if data:
+        results.append(data)
+        print(f"முடிந்தது: {word}")
+
+# CSV கோப்பாகச் சேமித்தல்
+csv_columns = ["English", "Image", "Tamil", "Telugu", "Kannada", "Malayalam", "Hindi", "Malay"]
+csv_file = "wiki_translations.csv"
+
+try:
+    with open(csv_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+        writer.writeheader()
+        for data in results:
+            writer.writerow(data)
+    print(f"\nவெற்றி! தரவுகள் '{csv_file}' என்ற கோப்பில் சேமிக்கப்பட்டுள்ளன.")
+except IOError:
+    print("கோப்பை உருவாக்குவதில் பிழை ஏற்பட்டது.")
